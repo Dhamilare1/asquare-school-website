@@ -58,4 +58,58 @@ router.post("/subjects", requireAuth, (req, res) => {
   }
 });
 
+// -----------------------------------------------------------------------
+// Per-class subject lists — which subjects a given class actually takes.
+// -----------------------------------------------------------------------
+
+// GET /api/meta/classes/:classId/subjects
+// Returns which subjects apply to this class, and whether the class has
+// been customized yet (if not, the app is showing every subject as a
+// sensible default, and the frontend should pre-check them all).
+router.get("/classes/:classId/subjects", requireAuth, (req, res) => {
+  const classId = req.params.classId;
+
+  const { count } = db
+    .prepare("SELECT COUNT(*) AS count FROM class_subjects WHERE class_id = ?")
+    .get(classId);
+
+  if (count === 0) {
+    const all = db.prepare("SELECT id FROM subjects").all();
+    return res.json({ customized: false, subject_ids: all.map((s) => s.id) });
+  }
+
+  const rows = db
+    .prepare("SELECT subject_id FROM class_subjects WHERE class_id = ?")
+    .all(classId);
+
+  res.json({ customized: true, subject_ids: rows.map((r) => r.subject_id) });
+});
+
+// PUT /api/meta/classes/:classId/subjects  { subject_ids: [1,2,3] }
+// Replaces the whole subject list for this class in one go.
+router.put("/classes/:classId/subjects", requireAuth, (req, res) => {
+  const classId = req.params.classId;
+  const subjectIds = Array.isArray(req.body?.subject_ids) ? req.body.subject_ids : null;
+
+  if (!subjectIds) {
+    return res.status(400).json({ error: "subject_ids must be an array of subject IDs." });
+  }
+
+  const classExists = db.prepare("SELECT id FROM classes WHERE id = ?").get(classId);
+  if (!classExists) return res.status(404).json({ error: "Class not found." });
+
+  const replace = db.transaction((ids) => {
+    db.prepare("DELETE FROM class_subjects WHERE class_id = ?").run(classId);
+    const insert = db.prepare("INSERT INTO class_subjects (class_id, subject_id) VALUES (?, ?)");
+    for (const subjectId of ids) insert.run(classId, subjectId);
+  });
+
+  try {
+    replace(subjectIds);
+    res.json({ classId: Number(classId), subject_ids: subjectIds });
+  } catch (err) {
+    res.status(400).json({ error: "Could not save subjects — check the subject IDs are valid." });
+  }
+});
+
 module.exports = router;

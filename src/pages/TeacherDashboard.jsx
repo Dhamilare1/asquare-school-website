@@ -4,7 +4,9 @@ import { motion } from "framer-motion";
 import {
   BookOpen,
   CalendarDays,
+  ListChecks,
   LogOut,
+  Plus,
   Save,
   ShieldCheck,
   UserPlus,
@@ -16,6 +18,9 @@ import {
   createStudent,
   fetchResultEntry,
   saveResult,
+  fetchClassSubjects,
+  saveClassSubjects,
+  createSubject,
   getStoredTeacher,
   getToken,
   logout,
@@ -43,6 +48,12 @@ function TeacherDashboard() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [showSubjectEditor, setShowSubjectEditor] = useState(false);
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState(new Set());
+  const [subjectsCustomized, setSubjectsCustomized] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState("");
+  const [savingSubjects, setSavingSubjects] = useState(false);
+
   // Guard the page + load dropdown data
   useEffect(() => {
     if (!getToken()) {
@@ -66,16 +77,17 @@ function TeacherDashboard() {
     fetchStudents({ classId })
       .then((rows) => setStudents(rows))
       .catch((err) => setError(err.message));
+    setShowSubjectEditor(false);
   }, [classId]);
 
   // Reload the entry form (with existing scores, if any) whenever the
-  // student/session/term selection is complete
+  // student/session/term/class selection is complete
   useEffect(() => {
     if (!studentId || !sessionId || !termId) {
       setEntryRows([]);
       return;
     }
-    fetchResultEntry({ studentId, sessionId, termId })
+    fetchResultEntry({ studentId, sessionId, termId, classId })
       .then((rows) =>
         setEntryRows(
           rows.map((r) => ({
@@ -87,7 +99,69 @@ function TeacherDashboard() {
         )
       )
       .catch((err) => setError(err.message));
-  }, [studentId, sessionId, termId]);
+  }, [studentId, sessionId, termId, classId]);
+
+  const openSubjectEditor = () => {
+    setError("");
+    fetchClassSubjects(classId)
+      .then(({ subject_ids, customized }) => {
+        setSelectedSubjectIds(new Set(subject_ids));
+        setSubjectsCustomized(customized);
+        setShowSubjectEditor(true);
+      })
+      .catch((err) => setError(err.message));
+  };
+
+  const toggleSubject = (subjectId) => {
+    setSelectedSubjectIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(subjectId)) next.delete(subjectId);
+      else next.add(subjectId);
+      return next;
+    });
+  };
+
+  const handleAddNewSubject = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (!newSubjectName.trim()) return;
+    try {
+      const created = await createSubject(newSubjectName.trim());
+      const freshMeta = await fetchMeta();
+      setMeta(freshMeta);
+      setSelectedSubjectIds((prev) => new Set(prev).add(created.id));
+      setNewSubjectName("");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleSaveClassSubjects = async () => {
+    setError("");
+    setStatus("");
+    setSavingSubjects(true);
+    try {
+      await saveClassSubjects(classId, Array.from(selectedSubjectIds));
+      setStatus("Updated the subject list for this class.");
+      setShowSubjectEditor(false);
+      // Re-pull the entry form so it reflects the new subject list
+      if (studentId && sessionId && termId) {
+        const rows = await fetchResultEntry({ studentId, sessionId, termId, classId });
+        setEntryRows(
+          rows.map((r) => ({
+            subject_id: r.subject_id,
+            subject_name: r.subject_name,
+            ca_score: r.ca_score ?? "",
+            exam_score: r.exam_score ?? "",
+          }))
+        );
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingSubjects(false);
+    }
+  };
 
   const handleAddStudent = async (e) => {
     e.preventDefault();
@@ -287,6 +361,15 @@ function TeacherDashboard() {
                 {showAddStudent ? "Cancel" : "Add New Student to This Class"}
               </button>
 
+              <button
+                type="button"
+                className="reset-button teacher-edit-subjects-button"
+                onClick={() => (showSubjectEditor ? setShowSubjectEditor(false) : openSubjectEditor())}
+              >
+                <ListChecks size={16} />
+                {showSubjectEditor ? "Cancel" : "Edit Subjects for This Class"}
+              </button>
+
               {showAddStudent && (
                 <form className="student-form teacher-add-student-form" onSubmit={handleAddStudent}>
                   <div className="student-field">
@@ -314,6 +397,54 @@ function TeacherDashboard() {
                     </button>
                   </div>
                 </form>
+              )}
+
+              {showSubjectEditor && (
+                <div className="teacher-subject-editor">
+                  <p className="teacher-subject-editor-hint">
+                    {subjectsCustomized
+                      ? "Only checked subjects will show up for this class when entering results."
+                      : "This class hasn't been customized yet, so every subject is shown by default. Uncheck any that don't apply."}
+                  </p>
+
+                  <div className="teacher-subject-checklist">
+                    {meta.subjects.map((s) => (
+                      <label key={s.id} className="teacher-subject-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={selectedSubjectIds.has(s.id)}
+                          onChange={() => toggleSubject(s.id)}
+                        />
+                        {s.name}
+                      </label>
+                    ))}
+                  </div>
+
+                  <form className="teacher-add-subject-form" onSubmit={handleAddNewSubject}>
+                    <input
+                      type="text"
+                      value={newSubjectName}
+                      onChange={(e) => setNewSubjectName(e.target.value)}
+                      placeholder="New subject name (e.g. Further Mathematics)"
+                    />
+                    <button type="submit" className="teacher-save-row-button">
+                      <Plus size={14} />
+                      Add Subject
+                    </button>
+                  </form>
+
+                  <div className="student-form-actions">
+                    <button
+                      type="button"
+                      className="check-result-button"
+                      onClick={handleSaveClassSubjects}
+                      disabled={savingSubjects}
+                    >
+                      <Save size={18} />
+                      {savingSubjects ? "Saving..." : "Save Subject List"}
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           )}

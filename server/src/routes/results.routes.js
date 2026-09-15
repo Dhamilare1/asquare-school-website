@@ -55,13 +55,29 @@ router.get("/check/pdf", (req, res) => {
 // Everything below requires a logged-in teacher.
 router.use(requireAuth);
 
-// GET /api/results/entry?student_id=1&session_id=3&term_id=1
-// Returns every subject with whatever score (if any) is already saved,
-// so the entry form can be pre-filled for editing.
+// GET /api/results/entry?student_id=1&session_id=3&term_id=1&class_id=2
+// Returns every subject THIS CLASS TAKES (falling back to every subject
+// if the class hasn't been customized yet — see class_subjects table),
+// with whatever score (if any) is already saved, so the entry form can
+// be pre-filled for editing.
 router.get("/entry", (req, res) => {
-  const { student_id, session_id, term_id } = req.query;
+  const { student_id, session_id, term_id, class_id } = req.query;
   if (!student_id || !session_id || !term_id) {
     return res.status(400).json({ error: "student_id, session_id and term_id are required." });
+  }
+
+  let subjectFilter = "";
+  const filterParams = [];
+
+  if (class_id) {
+    const { count } = db
+      .prepare("SELECT COUNT(*) AS count FROM class_subjects WHERE class_id = ?")
+      .get(class_id);
+
+    if (count > 0) {
+      subjectFilter = "WHERE sub.id IN (SELECT subject_id FROM class_subjects WHERE class_id = ?)";
+      filterParams.push(class_id);
+    }
   }
 
   const rows = db
@@ -74,9 +90,10 @@ router.get("/entry", (req, res) => {
         AND r.student_id = ?
         AND r.session_id = ?
         AND r.term_id = ?
+       ${subjectFilter}
        ORDER BY sub.name ASC`
     )
-    .all(student_id, session_id, term_id);
+    .all(student_id, session_id, term_id, ...filterParams);
 
   res.json(rows);
 });

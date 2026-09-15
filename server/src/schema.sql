@@ -72,3 +72,13 @@ CREATE TABLE IF NOT EXISTS results (
 CREATE INDEX IF NOT EXISTS idx_results_lookup ON results(session_id, term_id, class_id);
 CREATE INDEX IF NOT EXISTS idx_students_name ON students(full_name);
 CREATE INDEX IF NOT EXISTS idx_students_class ON students(class_id);
+
+-- Which subjects apply to which class (e.g. "Further Mathematics" only
+-- for SSS classes). If a class has NO rows here, the app treats that as
+-- "not customized yet" and falls back to showing every subject — so
+-- nothing changes for a class until a teacher deliberately edits it.
+CREATE TABLE IF NOT EXISTS class_subjects (
+  class_id   INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  subject_id INTEGER NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+  PRIMARY KEY (class_id, subject_id)
+);

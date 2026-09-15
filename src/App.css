@@ -7138,3 +7138,68 @@
 .admin-delete-button:hover {
   background: #f8d3d3;
 }
+
+
+/* =========================================
+   TEACHER — PER-CLASS SUBJECT EDITOR
+========================================= */
+
+.teacher-edit-subjects-button {
+  margin-left: 10px;
+}
+
+.teacher-subject-editor {
+  margin-top: 20px;
+  padding: 20px;
+
+  background: #f9faf9;
+  border: 1px solid #e2e8e4;
+  border-radius: 10px;
+}
+
+.teacher-subject-editor-hint {
+  margin: 0 0 14px;
+
+  color: #556058;
+  font-family: 'roboto';
+  font-size: 12px;
+}
+
+.teacher-subject-checklist {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px 16px;
+
+  margin-bottom: 18px;
+}
+
+.teacher-subject-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  font-family: 'roboto';
+  font-size: 13px;
+  color: #23291f;
+
+  cursor: pointer;
+}
+
+.teacher-add-subject-form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+
+  margin-bottom: 18px;
+}
+
+.teacher-add-subject-form input {
+  flex: 1;
+  padding: 8px 12px;
+
+  border: 1px solid #ddd;
+  border-radius: 6px;
+
+  font-family: 'roboto';
+  font-size: 13px;
+}

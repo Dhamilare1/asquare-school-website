@@ -99,17 +99,36 @@ export function createStudent(student) {
 
 // ---- Teacher: results ----
 
-export function fetchResultEntry({ studentId, sessionId, termId }) {
+export function fetchResultEntry({ studentId, sessionId, termId, classId }) {
   const params = new URLSearchParams({
     student_id: studentId,
     session_id: sessionId,
     term_id: termId,
   });
+  if (classId) params.set("class_id", classId);
   return request(`/results/entry?${params.toString()}`, { auth: true });
 }
 
 export function saveResult(entry) {
   return request("/results", { method: "POST", body: entry, auth: true });
+}
+
+// ---- Teacher: per-class subject list ----
+
+export function fetchClassSubjects(classId) {
+  return request(`/meta/classes/${classId}/subjects`, { auth: true });
+}
+
+export function saveClassSubjects(classId, subjectIds) {
+  return request(`/meta/classes/${classId}/subjects`, {
+    method: "PUT",
+    body: { subject_ids: subjectIds },
+    auth: true,
+  });
+}
+
+export function createSubject(name) {
+  return request("/meta/subjects", { method: "POST", body: { name }, auth: true });
 }
 
 // ---- Admin: manage teacher accounts ----
