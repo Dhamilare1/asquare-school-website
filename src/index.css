@@ -1,0 +1,74 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  background: #f8faf8;
+
+  color: #17221c;
+
+  line-height: 1.6;
+
+  overflow-x: hidden;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+
+/* GLOBAL CONTAINER */
+
+.container {
+  width: min(1200px, 92%);
+
+  margin: 0 auto;
+}
+
+
+/* GLOBAL SECTION */
+
+.section {
+  padding: 90px 0;
+}
+
+
+/* TABLET */
+
+@media (max-width: 900px) {
+
+  .section {
+    padding: 70px 0;
+  }
+
+}
+
+
+/* MOBILE */
+
+@media (max-width: 600px) {
+
+  .section {
+    padding: 55px 0;
+  }
+
+}
