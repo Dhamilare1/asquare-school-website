@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -10,7 +10,12 @@ import {
   Loader2,
   Download,
 } from "lucide-react";
-import { checkResult, getReportCardPdfUrl } from "../lib/api";
+import { checkResult, getReportCardPdfUrl, fetchMeta } from "../lib/api";
+import schoolLogo from "../assets/images/myImage.png";
+
+const SCHOOL_NAME = '"A"SQUARE EDUCATIONAL SERVICES';
+const SCHOOL_MOTTO = "Excellence is Our Ultimate Goal";
+const SCHOOL_ADDRESS = "137, Isuti Road, Moonlight Bus-stop, Egan-Igando, Lagos State, Nigeria.";
 
 function Portal() {
   const [studentName, setStudentName] = useState("");
@@ -24,42 +29,28 @@ function Portal() {
   const [error, setError] = useState("");
   const [resultData, setResultData] = useState(null);
 
-  const classes = {
-    Primary: [
-      "KG 1",
-      "KG 2",
-      "Nursery 1",
-      "Nursery 2",
-      "Primary 1",
-      "Primary 2",
-      "Primary 3",
-      "Primary 4",
-      "Primary 5",
-      "Primary 6",
-    ],
+  // Classes, terms and sessions all come from the database, not a
+  // hardcoded list — so a new session (e.g. "2027/2028") added by an
+  // admin shows up here automatically, with no code changes needed.
+  const [classesByLevel, setClassesByLevel] = useState({ Primary: [], Secondary: [] });
+  const [terms, setTerms] = useState([]);
+  const [sessions, setSessions] = useState([]);
 
-    Secondary: [
-      "JSS 1",
-      "JSS 2",
-      "JSS 3",
-      "SSS 1",
-      "SSS 2",
-      "SSS 3",
-    ],
-  };
-
-  const terms = [
-    "First Term",
-    "Second Term",
-    "Third Term",
-  ];
-
-  const sessions = [
-    "2026/2027",
-    "2025/2026",
-    "2024/2025",
-    "2023/2024",
-  ];
+  useEffect(() => {
+    fetchMeta()
+      .then((meta) => {
+        setClassesByLevel({
+          Primary: meta.classes.filter((c) => c.level === "Primary").map((c) => c.name),
+          Secondary: meta.classes.filter((c) => c.level === "Secondary").map((c) => c.name),
+        });
+        setTerms(meta.terms.map((t) => t.name));
+        setSessions(meta.sessions.map((s) => s.name));
+      })
+      .catch(() => {
+        // If this fails (e.g. backend briefly unreachable), the dropdowns
+        // just stay empty rather than crashing the page.
+      });
+  }, []);
 
  
   const handleCheckResult = async (e) => {
@@ -379,7 +370,7 @@ function Portal() {
                 </option>
 
                 {schoolLevel &&
-                  classes[schoolLevel].map(
+                  classesByLevel[schoolLevel].map(
                     (item) => (
                       <option
                         key={item}
@@ -523,6 +514,17 @@ function Portal() {
         >
 
           <div className="container">
+
+            {/* REPORT CARD LETTERHEAD */}
+
+            <div className="report-letterhead">
+              <img src={schoolLogo} alt="School logo" className="report-letterhead-logo" />
+              <div>
+                <h3>{SCHOOL_NAME}</h3>
+                <p className="report-letterhead-motto">{SCHOOL_MOTTO}</p>
+                <p className="report-letterhead-address">{SCHOOL_ADDRESS}</p>
+              </div>
+            </div>
 
             {/* RESULT HEADER */}
 
@@ -699,6 +701,58 @@ function Portal() {
               </table>
 
             </motion.div>
+
+            {/* ATTENDANCE, REMARKS & PROMOTION */}
+
+            {resultData.termRecord && (
+              <motion.div
+                className="report-extra-info"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+              >
+                {(resultData.termRecord.timesSchoolOpened != null ||
+                  resultData.termRecord.timesPresent != null) && (
+                  <div className="report-info-block">
+                    <h4>Attendance</h4>
+                    <p>
+                      School opened: {resultData.termRecord.timesSchoolOpened ?? "-"}
+                      {"  |  "}
+                      Times present: {resultData.termRecord.timesPresent ?? "-"}
+                      {"  |  "}
+                      Times absent: {resultData.termRecord.timesAbsent ?? "-"}
+                    </p>
+                  </div>
+                )}
+
+                {resultData.termRecord.teacherRemark && (
+                  <div className="report-info-block">
+                    <h4>Teacher's Remark</h4>
+                    <p>{resultData.termRecord.teacherRemark}</p>
+                  </div>
+                )}
+
+                {resultData.termRecord.principalRemark && (
+                  <div className="report-info-block">
+                    <h4>Principal's Remark</h4>
+                    <p>{resultData.termRecord.principalRemark}</p>
+                  </div>
+                )}
+
+                {resultData.termRecord.promotionStatus && (
+                  <div className="report-info-block report-promotion-block">
+                    <h4>Promotion</h4>
+                    <p>
+                      {resultData.termRecord.promotionStatus === "Promoted" &&
+                        `Promoted to ${resultData.termRecord.promotedToClass || "the next class"}.`}
+                      {resultData.termRecord.promotionStatus === "Repeated" &&
+                        `To repeat ${resultData.studentClass} next session.`}
+                      {resultData.termRecord.promotionStatus === "Graduated" && "Graduated."}
+                    </p>
+                  </div>
+                )}
+              </motion.div>
+            )}
 
             {/* DOWNLOAD REPORT CARD */}
 

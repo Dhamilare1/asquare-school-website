@@ -82,3 +82,40 @@ CREATE TABLE IF NOT EXISTS class_subjects (
   subject_id INTEGER NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
   PRIMARY KEY (class_id, subject_id)
 );
+
+-- One row per student, per term, per session, for everything on a
+-- report card that ISN'T a subject score: remarks, attendance, and
+-- (only really meaningful in Third Term) promotion to the next class.
+-- NOTE: times_school_opened lives in term_settings below instead (it's
+-- the same number for every student in a term, not a per-student
+-- value) — this column is kept only so older rows aren't broken, but
+-- the app no longer writes to it.
+CREATE TABLE IF NOT EXISTS term_records (
+  id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+  student_id           INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  class_id             INTEGER NOT NULL REFERENCES classes(id),
+  session_id           INTEGER NOT NULL REFERENCES sessions(id),
+  term_id              INTEGER NOT NULL REFERENCES terms(id),
+  teacher_remark       TEXT,
+  principal_remark     TEXT,
+  times_school_opened  INTEGER,
+  times_present        INTEGER,
+  promotion_status     TEXT CHECK (promotion_status IN ('Promoted', 'Repeated', 'Graduated')),
+  promoted_to_class_id INTEGER REFERENCES classes(id),
+  teacher_id           INTEGER REFERENCES teachers(id),
+  created_at           TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at           TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (student_id, session_id, term_id)
+);
+
+-- How many days school opened in a given term/session. This is ONE
+-- number that applies to every student that term — set once here
+-- instead of retyped per student. "Times absent" is calculated from
+-- this minus a student's own times_present, never stored separately,
+-- so the two numbers can never disagree with each other.
+CREATE TABLE IF NOT EXISTS term_settings (
+  session_id          INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  term_id             INTEGER NOT NULL REFERENCES terms(id) ON DELETE CASCADE,
+  times_school_opened INTEGER,
+  PRIMARY KEY (session_id, term_id)
+);

@@ -1,6 +1,7 @@
 const express = require("express");
 const db = require("../db");
 const requireAuth = require("../middleware/requireAuth");
+const requireAdmin = require("../middleware/requireAdmin");
 
 const router = express.Router();
 
@@ -15,12 +16,12 @@ router.get("/", (_req, res) => {
   res.json({ sessions, terms, classes, subjects });
 });
 
-// The endpoints below let a logged-in teacher grow the lists above
+// The endpoints below let a logged-in ADMIN grow the lists above
 // (e.g. add a new session at the start of a school year) without
 // touching the database by hand.
 
 // POST /api/meta/sessions  { name: "2027/2028" }
-router.post("/sessions", requireAuth, (req, res) => {
+router.post("/sessions", requireAuth, requireAdmin, (req, res) => {
   const name = (req.body?.name || "").trim();
   if (!name) return res.status(400).json({ error: "Session name is required." });
   try {
@@ -32,7 +33,7 @@ router.post("/sessions", requireAuth, (req, res) => {
 });
 
 // POST /api/meta/classes  { name: "SSS 4", level: "Secondary" }
-router.post("/classes", requireAuth, (req, res) => {
+router.post("/classes", requireAuth, requireAdmin, (req, res) => {
   const name = (req.body?.name || "").trim();
   const level = req.body?.level;
   if (!name || !["Primary", "Secondary"].includes(level)) {

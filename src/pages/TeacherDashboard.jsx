@@ -3,12 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   BookOpen,
+  CalendarCheck,
   CalendarDays,
   ListChecks,
   LogOut,
+  MessageSquare,
   Plus,
   Save,
   ShieldCheck,
+  TrendingUp,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -21,6 +24,10 @@ import {
   fetchClassSubjects,
   saveClassSubjects,
   createSubject,
+  fetchTermRecord,
+  saveTermRecord,
+  fetchTermSettings,
+  saveTermSettings,
   getStoredTeacher,
   getToken,
   logout,
@@ -54,15 +61,34 @@ function TeacherDashboard() {
   const [newSubjectName, setNewSubjectName] = useState("");
   const [savingSubjects, setSavingSubjects] = useState(false);
 
+  const emptyTermRecord = {
+    teacherRemark: "",
+    principalRemark: "",
+    timesPresent: "",
+    promotionStatus: "",
+    promotedToClassId: "",
+  };
+  const [termRecord, setTermRecord] = useState(emptyTermRecord);
+  const [savingTermRecord, setSavingTermRecord] = useState(false);
+
+  const [schoolOpenedDays, setSchoolOpenedDays] = useState("");
+  const [savingSchoolOpened, setSavingSchoolOpened] = useState(false);
+
   // Guard the page + load dropdown data
   useEffect(() => {
     if (!getToken()) {
       navigate("/teacher-login");
       return;
     }
-    verifySession().catch(() => {
-      logout();
-      navigate("/teacher-login");
+    verifySession().catch((err) => {
+      // Only force a logout when the server actually rejected the token
+      // (401 = expired/invalid). A network hiccup, a slow backend
+      // waking back up, or any other transient failure should NOT log
+      // a teacher out just for switching pages and coming back.
+      if (err.status === 401) {
+        logout();
+        navigate("/teacher-login");
+      }
     });
     fetchMeta().then(setMeta).catch((err) => setError(err.message));
   }, [navigate]);
@@ -100,6 +126,58 @@ function TeacherDashboard() {
       )
       .catch((err) => setError(err.message));
   }, [studentId, sessionId, termId, classId]);
+
+  // Reload remarks/attendance/promotion whenever the student/session/term
+  // selection is complete (independent of the subject-score table above)
+  useEffect(() => {
+    if (!studentId || !sessionId || !termId) {
+      setTermRecord(emptyTermRecord);
+      return;
+    }
+    fetchTermRecord({ studentId, sessionId, termId })
+      .then((record) => {
+        setTermRecord({
+          teacherRemark: record?.teacher_remark ?? "",
+          principalRemark: record?.principal_remark ?? "",
+          timesPresent: record?.times_present ?? "",
+          promotionStatus: record?.promotion_status ?? "",
+          promotedToClassId: record?.promoted_to_class_id ? String(record.promoted_to_class_id) : "",
+        });
+      })
+      .catch((err) => setError(err.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentId, sessionId, termId]);
+
+  // "School opened" is ONE number for the whole term/session — shared
+  // by every student — so it only depends on session+term, not on
+  // which student or class is currently selected.
+  useEffect(() => {
+    if (!sessionId || !termId) {
+      setSchoolOpenedDays("");
+      return;
+    }
+    fetchTermSettings({ sessionId, termId })
+      .then((settings) => setSchoolOpenedDays(settings?.times_school_opened ?? ""))
+      .catch((err) => setError(err.message));
+  }, [sessionId, termId]);
+
+  const handleSaveSchoolOpened = async () => {
+    setError("");
+    setStatus("");
+    setSavingSchoolOpened(true);
+    try {
+      await saveTermSettings({
+        session_id: Number(sessionId),
+        term_id: Number(termId),
+        times_school_opened: schoolOpenedDays === "" ? null : Number(schoolOpenedDays),
+      });
+      setStatus("Saved how many days school opened this term.");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingSchoolOpened(false);
+    }
+  };
 
   const openSubjectEditor = () => {
     setError("");
@@ -250,6 +328,37 @@ function TeacherDashboard() {
     navigate("/teacher-login");
   };
 
+  const handleSaveTermRecord = async () => {
+    setError("");
+    setStatus("");
+    if (termRecord.promotionStatus === "Promoted" && !termRecord.promotedToClassId) {
+      setError("Pick which class the student is being promoted to.");
+      return;
+    }
+    setSavingTermRecord(true);
+    try {
+      await saveTermRecord({
+        student_id: Number(studentId),
+        class_id: Number(classId),
+        session_id: Number(sessionId),
+        term_id: Number(termId),
+        teacher_remark: termRecord.teacherRemark || null,
+        principal_remark: termRecord.principalRemark || null,
+        times_present: termRecord.timesPresent === "" ? null : Number(termRecord.timesPresent),
+        promotion_status: termRecord.promotionStatus || null,
+        promoted_to_class_id: termRecord.promotedToClassId ? Number(termRecord.promotedToClassId) : null,
+      });
+      setStatus("Saved remarks, attendance and promotion.");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingTermRecord(false);
+    }
+  };
+
+  const selectedTermName = meta.terms.find((t) => String(t.id) === String(termId))?.name;
+  const isThirdTerm = selectedTermName === "Third Term";
+
   return (
     <main className="student-page">
       <section className="student-hero">
@@ -353,6 +462,33 @@ function TeacherDashboard() {
               </select>
             </div>
           </div>
+
+          {sessionId && termId && (
+            <div className="teacher-school-opened-row">
+              <div className="student-field">
+                <label>
+                  <CalendarCheck size={16} />
+                  School Opened This Term (applies to every student)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={schoolOpenedDays}
+                  onChange={(e) => setSchoolOpenedDays(e.target.value)}
+                  placeholder="e.g. 65"
+                />
+              </div>
+              <button
+                type="button"
+                className="teacher-save-row-button teacher-save-school-opened-button"
+                onClick={handleSaveSchoolOpened}
+                disabled={savingSchoolOpened}
+              >
+                <Save size={14} />
+                {savingSchoolOpened ? "Saving..." : "Save"}
+              </button>
+            </div>
+          )}
 
           {classId && (
             <div className="teacher-add-student">
@@ -515,6 +651,130 @@ function TeacherDashboard() {
                 <button type="button" className="check-result-button" onClick={handleSaveAll} disabled={loading}>
                   <Save size={18} />
                   {loading ? "Saving all..." : "Save All Entered Subjects"}
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* TERM RECORD — remarks, attendance, promotion */}
+          {studentId && sessionId && termId && (
+            <motion.div
+              className="teacher-term-record"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              <h3 className="teacher-term-record-heading">
+                <MessageSquare size={18} />
+                Remarks &amp; Attendance
+              </h3>
+
+              <div className="teacher-remark-field">
+                <label>Teacher's Remark</label>
+                <textarea
+                  rows={3}
+                  value={termRecord.teacherRemark}
+                  onChange={(e) => setTermRecord((prev) => ({ ...prev, teacherRemark: e.target.value }))}
+                  placeholder="e.g. Shows great improvement in Mathematics this term."
+                />
+              </div>
+
+              <div className="teacher-remark-field">
+                <label>
+                  Principal's Remark
+                  {teacher?.role !== "admin" && (
+                    <span className="teacher-remark-admin-note"> (admin only — view only for you)</span>
+                  )}
+                </label>
+                <textarea
+                  rows={3}
+                  value={termRecord.principalRemark}
+                  onChange={(e) => setTermRecord((prev) => ({ ...prev, principalRemark: e.target.value }))}
+                  disabled={teacher?.role !== "admin"}
+                  placeholder={teacher?.role === "admin" ? "e.g. A well-rounded result. Keep it up." : ""}
+                />
+              </div>
+
+              <div className="teacher-attendance-row">
+                <div className="student-field">
+                  <label>
+                    <CalendarCheck size={16} />
+                    Number of Times Present
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={termRecord.timesPresent}
+                    onChange={(e) => setTermRecord((prev) => ({ ...prev, timesPresent: e.target.value }))}
+                    placeholder="e.g. 60"
+                  />
+                  {schoolOpenedDays !== "" && termRecord.timesPresent !== "" && (
+                    <p className="teacher-absent-hint">
+                      Implies {Number(schoolOpenedDays) - Number(termRecord.timesPresent)} time(s) absent
+                      (school opened {schoolOpenedDays} times).
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {isThirdTerm && (
+                <div className="teacher-promotion-section">
+                  <h4 className="teacher-promotion-heading">
+                    <TrendingUp size={16} />
+                    Promotion (Third Term)
+                  </h4>
+
+                  <div className="teacher-attendance-row">
+                    <div className="student-field">
+                      <label>Status</label>
+                      <select
+                        value={termRecord.promotionStatus}
+                        onChange={(e) =>
+                          setTermRecord((prev) => ({
+                            ...prev,
+                            promotionStatus: e.target.value,
+                            promotedToClassId: e.target.value === "Promoted" ? prev.promotedToClassId : "",
+                          }))
+                        }
+                      >
+                        <option value="">Not decided yet</option>
+                        <option value="Promoted">Promoted</option>
+                        <option value="Repeated">Repeated (stays in same class)</option>
+                        <option value="Graduated">Graduated</option>
+                      </select>
+                    </div>
+
+                    {termRecord.promotionStatus === "Promoted" && (
+                      <div className="student-field">
+                        <label>Promoted To</label>
+                        <select
+                          value={termRecord.promotedToClassId}
+                          onChange={(e) =>
+                            setTermRecord((prev) => ({ ...prev, promotedToClassId: e.target.value }))
+                          }
+                        >
+                          <option value="">Select class</option>
+                          {meta.classes.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="student-form-actions">
+                <button
+                  type="button"
+                  className="check-result-button"
+                  onClick={handleSaveTermRecord}
+                  disabled={savingTermRecord}
+                >
+                  <Save size={18} />
+                  {savingTermRecord ? "Saving..." : "Save Remarks & Attendance"}
                 </button>
               </div>
             </motion.div>

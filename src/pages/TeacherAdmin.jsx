@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, KeyRound, Mail, ShieldCheck, Trash2, User, UserPlus } from "lucide-react";
+import { ArrowLeft, CalendarPlus, KeyRound, Mail, ShieldCheck, Trash2, User, UserPlus } from "lucide-react";
 import {
   fetchTeachers,
   createTeacherAccount,
   updateTeacherAccount,
   deleteTeacherAccount,
+  fetchMeta,
+  createSession,
   getStoredTeacher,
   getToken,
   verifySession,
@@ -28,6 +30,10 @@ function TeacherAdmin() {
 
   const [resetPasswords, setResetPasswords] = useState({}); // { [id]: value }
 
+  const [sessions, setSessions] = useState([]);
+  const [newSessionName, setNewSessionName] = useState("");
+  const [creatingSession, setCreatingSession] = useState(false);
+
   useEffect(() => {
     if (!getToken()) {
       navigate("/teacher-login");
@@ -39,9 +45,15 @@ function TeacherAdmin() {
           navigate("/teacher-dashboard");
         }
       })
-      .catch(() => navigate("/teacher-login"));
+      .catch((err) => {
+        // Same rule as the Teacher Dashboard: only a real 401 (token
+        // actually rejected) sends them back to login. A network blip
+        // shouldn't.
+        if (err.status === 401) navigate("/teacher-login");
+      });
 
     loadTeachers();
+    loadSessions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
@@ -50,6 +62,31 @@ function TeacherAdmin() {
       .then(setTeachers)
       .catch((err) => setError(err.message));
   }
+
+  function loadSessions() {
+    fetchMeta()
+      .then((meta) => setSessions(meta.sessions))
+      .catch((err) => setError(err.message));
+  }
+
+  const handleCreateSession = async (e) => {
+    e.preventDefault();
+    setError("");
+    setStatus("");
+    if (!newSessionName.trim()) return;
+
+    setCreatingSession(true);
+    try {
+      await createSession(newSessionName.trim());
+      setStatus(`Added session ${newSessionName.trim()}.`);
+      setNewSessionName("");
+      loadSessions();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCreatingSession(false);
+    }
+  };
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -283,6 +320,42 @@ function TeacherAdmin() {
                 ))}
               </tbody>
             </table>
+          </motion.div>
+
+          {/* MANAGE SESSIONS */}
+          <motion.div
+            className="admin-session-panel"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+          >
+            <h3 className="admin-session-heading">Academic Sessions</h3>
+            <p className="admin-session-hint">
+              Add a new session here at the start of each school year (e.g. "2027/2028") so it
+              appears as an option on the Teacher Dashboard and the public result checker.
+            </p>
+
+            <div className="admin-session-list">
+              {sessions.map((s) => (
+                <span key={s.id} className="admin-session-chip">
+                  {s.name}
+                </span>
+              ))}
+            </div>
+
+            <form className="teacher-add-subject-form admin-add-session-form" onSubmit={handleCreateSession}>
+              <input
+                type="text"
+                value={newSessionName}
+                onChange={(e) => setNewSessionName(e.target.value)}
+                placeholder='e.g. 2027/2028'
+              />
+              <button type="submit" className="teacher-save-row-button" disabled={creatingSession}>
+                <CalendarPlus size={14} />
+                {creatingSession ? "Adding..." : "Add Session"}
+              </button>
+            </form>
           </motion.div>
         </div>
       </section>

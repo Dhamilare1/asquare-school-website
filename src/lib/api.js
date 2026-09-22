@@ -47,7 +47,9 @@ async function request(path, { method = "GET", body, auth = false } = {}) {
   }
 
   if (!res.ok) {
-    throw new Error(data?.error || "Something went wrong. Please try again.");
+    const err = new Error(data?.error || "Something went wrong. Please try again.");
+    err.status = res.status;
+    throw err;
   }
 
   return data;
@@ -113,6 +115,32 @@ export function saveResult(entry) {
   return request("/results", { method: "POST", body: entry, auth: true });
 }
 
+// ---- Teacher: term record (remarks, attendance, promotion) ----
+
+export function fetchTermRecord({ studentId, sessionId, termId }) {
+  const params = new URLSearchParams({
+    student_id: studentId,
+    session_id: sessionId,
+    term_id: termId,
+  });
+  return request(`/results/term-record?${params.toString()}`, { auth: true });
+}
+
+export function saveTermRecord(record) {
+  return request("/results/term-record", { method: "POST", body: record, auth: true });
+}
+
+// ---- Teacher: term settings ("school opened" — once per session/term) ----
+
+export function fetchTermSettings({ sessionId, termId }) {
+  const params = new URLSearchParams({ session_id: sessionId, term_id: termId });
+  return request(`/results/term-settings?${params.toString()}`, { auth: true });
+}
+
+export function saveTermSettings(settings) {
+  return request("/results/term-settings", { method: "POST", body: settings, auth: true });
+}
+
 // ---- Teacher: per-class subject list ----
 
 export function fetchClassSubjects(classId) {
@@ -129,6 +157,12 @@ export function saveClassSubjects(classId, subjectIds) {
 
 export function createSubject(name) {
   return request("/meta/subjects", { method: "POST", body: { name }, auth: true });
+}
+
+// ---- Admin: sessions ----
+
+export function createSession(name) {
+  return request("/meta/sessions", { method: "POST", body: { name }, auth: true });
 }
 
 // ---- Admin: manage teacher accounts ----

@@ -44,6 +44,46 @@ function getStudentResult(db_, { studentName, studentClass, term, session }) {
   const totalScore = results.reduce((sum, r) => sum + r.total, 0);
   const average = Math.round((totalScore / results.length) * 100) / 100;
 
+  const termSettingsRow = database
+    .prepare(
+      `SELECT ts.times_school_opened
+       FROM term_settings ts
+       JOIN sessions ses ON ses.id = ts.session_id
+       JOIN terms t ON t.id = ts.term_id
+       WHERE ses.name = ? AND t.name = ?`
+    )
+    .get(session, term);
+
+  const studentTermRow = database
+    .prepare(
+      `SELECT tr.teacher_remark, tr.principal_remark, tr.times_present,
+              tr.promotion_status, pc.name AS promoted_to_class
+       FROM term_records tr
+       JOIN sessions ses ON ses.id = tr.session_id
+       JOIN terms t ON t.id = tr.term_id
+       LEFT JOIN classes pc ON pc.id = tr.promoted_to_class_id
+       WHERE tr.student_id = ? AND ses.name = ? AND t.name = ?`
+    )
+    .get(student.id, session, term);
+
+  const timesSchoolOpened = termSettingsRow?.times_school_opened ?? null;
+  const timesPresent = studentTermRow?.times_present ?? null;
+  const timesAbsent =
+    timesSchoolOpened != null && timesPresent != null ? timesSchoolOpened - timesPresent : null;
+
+  const termRecord =
+    termSettingsRow || studentTermRow
+      ? {
+          teacherRemark: studentTermRow?.teacher_remark ?? null,
+          principalRemark: studentTermRow?.principal_remark ?? null,
+          timesSchoolOpened,
+          timesPresent,
+          timesAbsent,
+          promotionStatus: studentTermRow?.promotion_status ?? null,
+          promotedToClass: studentTermRow?.promoted_to_class ?? null,
+        }
+      : null;
+
   return {
     studentName: student.full_name,
     studentClass: student.class_name,
@@ -51,6 +91,7 @@ function getStudentResult(db_, { studentName, studentClass, term, session }) {
     session,
     results,
     average,
+    termRecord,
   };
 }
 

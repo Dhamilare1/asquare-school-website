@@ -7203,3 +7203,269 @@
   font-family: 'roboto';
   font-size: 13px;
 }
+
+
+/* =========================================
+   ADMIN — SESSION MANAGEMENT
+========================================= */
+
+.admin-session-panel {
+  margin-top: 40px;
+  padding: 20px;
+
+  background: #f9faf9;
+  border: 1px solid #e2e8e4;
+  border-radius: 10px;
+}
+
+.admin-session-heading {
+  margin: 0 0 8px;
+
+  color: #0b5d3b;
+  font-family: 'roboto';
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.admin-session-hint {
+  margin: 0 0 16px;
+
+  color: #556058;
+  font-family: 'roboto';
+  font-size: 12px;
+}
+
+.admin-session-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  margin-bottom: 18px;
+}
+
+.admin-session-chip {
+  padding: 6px 14px;
+
+  background: #e8f2ec;
+  border-radius: 999px;
+
+  color: #0b5d3b;
+  font-family: 'roboto';
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-add-session-form {
+  margin-bottom: 0;
+}
+
+
+/* =========================================
+   REPORT CARD — LETTERHEAD, REMARKS, ATTENDANCE, PROMOTION
+========================================= */
+
+.report-letterhead {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+
+  border-bottom: 2px solid #0b5d3b;
+}
+
+.report-letterhead-logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.report-letterhead h3 {
+  margin: 0 0 4px;
+
+  color: #0b5d3b;
+  font-family: 'roboto';
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.report-letterhead-motto {
+  margin: 0 0 2px;
+
+  color: #556058;
+  font-family: 'roboto';
+  font-size: 12px;
+  font-style: italic;
+}
+
+.report-letterhead-address {
+  margin: 0;
+
+  color: #8a958e;
+  font-family: 'roboto';
+  font-size: 11px;
+}
+
+.report-extra-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  margin-top: 24px;
+  padding: 20px;
+
+  background: #f9faf9;
+  border: 1px solid #e2e8e4;
+  border-radius: 10px;
+}
+
+.report-info-block h4 {
+  margin: 0 0 6px;
+
+  color: #0b5d3b;
+  font-family: 'roboto';
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.report-info-block p {
+  margin: 0;
+
+  color: #333;
+  font-family: 'roboto';
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.report-promotion-block p {
+  color: #0b5d3b;
+  font-weight: 700;
+}
+
+/* ---- Teacher Dashboard: term record panel ---- */
+
+.teacher-term-record {
+  margin-top: 30px;
+  padding: 24px;
+
+  background: #f9faf9;
+  border: 1px solid #e2e8e4;
+  border-radius: 10px;
+}
+
+.teacher-term-record-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  margin: 0 0 18px;
+
+  color: #0b5d3b;
+  font-family: 'roboto';
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.teacher-remark-field {
+  margin-bottom: 18px;
+}
+
+.teacher-remark-field label {
+  display: block;
+  margin-bottom: 6px;
+
+  color: #23291f;
+  font-family: 'roboto';
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.teacher-remark-admin-note {
+  color: #8a958e;
+  font-size: 11px;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.teacher-remark-field textarea {
+  width: 100%;
+  padding: 10px 12px;
+
+  border: 1px solid #ddd;
+  border-radius: 8px;
+
+  font-family: 'roboto';
+  font-size: 13px;
+  resize: vertical;
+}
+
+.teacher-remark-field textarea:disabled {
+  background: #f0f0f0;
+  color: #888;
+}
+
+.teacher-attendance-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+
+  margin-bottom: 18px;
+}
+
+.teacher-promotion-section {
+  margin-bottom: 18px;
+  padding-top: 18px;
+
+  border-top: 1px dashed #d6ddd8;
+}
+
+.teacher-promotion-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  margin: 0 0 14px;
+
+  color: #0b5d3b;
+  font-family: 'roboto';
+  font-size: 14px;
+  font-weight: 900;
+}
+
+
+/* =========================================
+   TEACHER — SCHOOL OPENED (TERM-WIDE) + ABSENCE HINT
+========================================= */
+
+.teacher-school-opened-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+
+  margin: 6px 0 24px;
+  padding: 16px 18px;
+
+  background: #eef5f0;
+  border: 1px dashed #b9dcc7;
+  border-radius: 8px;
+}
+
+.teacher-school-opened-row .student-field {
+  flex: 1;
+  margin: 0;
+}
+
+.teacher-save-school-opened-button {
+  height: fit-content;
+}
+
+.teacher-absent-hint {
+  margin: 6px 0 0;
+
+  color: #8a958e;
+  font-family: 'roboto';
+  font-size: 11px;
+  font-style: italic;
+}

@@ -1,9 +1,16 @@
+const path = require("path");
 const PDFDocument = require("pdfkit");
 
 const SCHOOL_NAME = process.env.SCHOOL_NAME || '"A"SQUARE EDUCATIONAL SERVICES';
+const SCHOOL_MOTTO = process.env.SCHOOL_MOTTO || "Excellence is Our Ultimate Goal";
+const SCHOOL_ADDRESS =
+  process.env.SCHOOL_ADDRESS || "137, Isuti Road, Moonlight Bus-stop, Egan-Igando, Lagos State, Nigeria.";
+const LOGO_PATH = path.join(__dirname, "../assets/logo.png");
 
-// Writes a one-page report card PDF for the given result data directly
-// to the response stream. `data` is whatever resultsService.getStudentResult() returns.
+// Writes a report card PDF for the given result data directly to the
+// response stream. `data` is whatever resultsService.getStudentResult()
+// returns — including the optional `termRecord` (remarks, attendance,
+// promotion), which may be null if a teacher hasn't filled that in yet.
 function streamReportCardPdf(res, data) {
   const doc = new PDFDocument({ size: "A4", margin: 50 });
 
@@ -15,30 +22,50 @@ function streamReportCardPdf(res, data) {
 
   doc.pipe(res);
 
-  // Header
+  // ---- Letterhead: logo + school name / motto / address ----
+  const headerTop = 50;
+  try {
+    doc.image(LOGO_PATH, 50, headerTop, { width: 55 });
+  } catch (err) {
+    // A missing/corrupt logo file should never break the whole PDF —
+    // just skip it and carry on with the text.
+  }
+
+  doc.fontSize(16).fillColor("#0b5d3b").font("Helvetica-Bold").text(SCHOOL_NAME, 115, headerTop, { width: 380 });
   doc
-    .fontSize(18)
-    .fillColor("#0b5d3b")
-    .text(SCHOOL_NAME, { align: "center" })
+    .fontSize(9)
+    .fillColor("#555")
+    .font("Helvetica-Oblique")
+    .text(SCHOOL_MOTTO, 115, headerTop + 20, { width: 380 });
+  doc
+    .fontSize(8)
+    .fillColor("#777")
+    .font("Helvetica")
+    .text(SCHOOL_ADDRESS, 115, headerTop + 34, { width: 380 });
+
+  let cursorY = headerTop + 65; // clears the logo image and the 3 header text lines
+
+  doc
     .fontSize(11)
     .fillColor("#555")
-    .text("Student Academic Report Card", { align: "center" })
-    .moveDown(1.5);
+    .font("Helvetica")
+    .text("Student Academic Report Card", 50, cursorY, { align: "center", width: 495 });
+  cursorY += 22;
 
-  doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#0b5d3b").stroke();
-  doc.moveDown(1);
+  doc.moveTo(50, cursorY).lineTo(545, cursorY).strokeColor("#0b5d3b").stroke();
+  cursorY += 15;
 
-  // Student info block
-  doc.fontSize(11).fillColor("#000");
-  const infoY = doc.y;
-  doc.text(`Student Name: ${data.studentName}`, 50, infoY);
-  doc.text(`Class: ${data.studentClass}`, 320, infoY);
-  doc.text(`Term: ${data.term}`, 50, infoY + 20);
-  doc.text(`Session: ${data.session}`, 320, infoY + 20);
-  doc.moveDown(3);
+  // ---- Student info ----
+  doc.fontSize(11).fillColor("#000").font("Helvetica");
+  doc.text(`Student Name: ${data.studentName}`, 50, cursorY);
+  doc.text(`Class: ${data.studentClass}`, 320, cursorY);
+  cursorY += 20;
+  doc.text(`Term: ${data.term}`, 50, cursorY);
+  doc.text(`Session: ${data.session}`, 320, cursorY);
+  cursorY += 35;
 
-  // Table header
-  const tableTop = doc.y;
+  // ---- Subject table ----
+  const tableTop = cursorY;
   const col = { subject: 50, ca: 260, exam: 330, total: 400, grade: 470 };
 
   doc.fontSize(10).fillColor("#ffffff");
@@ -70,18 +97,89 @@ function streamReportCardPdf(res, data) {
 
   doc.rect(50, tableTop, 495, rowY - tableTop).strokeColor("#dddddd").stroke();
 
-  doc.moveDown(2);
-  doc.moveTo(50, rowY + 15).lineTo(545, rowY + 15).strokeColor("#dddddd").stroke();
+  cursorY = rowY + 15;
+  doc.moveTo(50, cursorY).lineTo(545, cursorY).strokeColor("#dddddd").stroke();
+  cursorY += 12;
 
   doc
     .fontSize(11)
     .fillColor("#0b5d3b")
-    .text(`Average Score: ${data.average}%`, 50, rowY + 25);
+    .font("Helvetica-Bold")
+    .text(`Average Score: ${data.average}%`, 50, cursorY);
+  cursorY += 28;
+
+  // Safety net: if we're getting close to the bottom of the page (e.g.
+  // a class with a lot of subjects), start a fresh page for the rest
+  // rather than letting it run off the bottom, unreadable.
+  function ensureRoomFor(height) {
+    if (cursorY + height > 780) {
+      doc.addPage();
+      cursorY = 50;
+    }
+  }
+
+  const tr = data.termRecord;
+
+  // ---- Attendance ----
+  if (tr && (tr.timesSchoolOpened != null || tr.timesPresent != null)) {
+    ensureRoomFor(40);
+    doc.fontSize(10).fillColor("#000").font("Helvetica-Bold").text("Attendance", 50, cursorY);
+    cursorY += 15;
+    doc
+      .font("Helvetica")
+      .fontSize(10)
+      .fillColor("#333")
+      .text(
+        `School opened: ${tr.timesSchoolOpened ?? "-"}    |    Times present: ${
+          tr.timesPresent ?? "-"
+        }    |    Times absent: ${tr.timesAbsent ?? "-"}`,
+        50,
+        cursorY
+      );
+    cursorY += 28;
+  }
+
+  // ---- Remarks ----
+  function addRemarkBlock(label, text) {
+    if (!text) return;
+    const blockHeight = doc.heightOfString(text, { width: 495 });
+    ensureRoomFor(blockHeight + 30);
+
+    doc.fontSize(10).fillColor("#000").font("Helvetica-Bold").text(label, 50, cursorY);
+    cursorY += 15;
+    doc.font("Helvetica").fontSize(10).fillColor("#333").text(text, 50, cursorY, { width: 495 });
+    cursorY += blockHeight + 18;
+  }
+
+  if (tr) {
+    addRemarkBlock("Teacher's Remark", tr.teacherRemark);
+    addRemarkBlock("Principal's Remark", tr.principalRemark);
+  }
+
+  // ---- Promotion (only shown when a teacher has actually recorded
+  // one — normally only filled in at the end of Third Term) ----
+  if (tr && tr.promotionStatus) {
+    let promotionText = "";
+    if (tr.promotionStatus === "Promoted") {
+      promotionText = `Promoted to ${tr.promotedToClass || "the next class"}.`;
+    } else if (tr.promotionStatus === "Repeated") {
+      promotionText = `To repeat ${data.studentClass} next session.`;
+    } else if (tr.promotionStatus === "Graduated") {
+      promotionText = "Graduated.";
+    }
+
+    ensureRoomFor(40);
+    doc.fontSize(10).fillColor("#000").font("Helvetica-Bold").text("Promotion", 50, cursorY);
+    cursorY += 15;
+    doc.font("Helvetica").fontSize(10).fillColor("#0b5d3b").text(promotionText, 50, cursorY);
+    cursorY += 25;
+  }
 
   doc
     .fontSize(9)
     .fillColor("#8a958e")
-    .text(`Generated on ${new Date().toLocaleDateString()}`, 50, 780, { align: "right", width: 495 });
+    .font("Helvetica")
+    .text(`Generated on ${new Date().toLocaleDateString()}`, 50, cursorY + 10, { align: "right", width: 495 });
 
   doc.end();
 }
