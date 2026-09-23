@@ -7469,3 +7469,51 @@
   font-size: 11px;
   font-style: italic;
 }
+
+
+/* =========================================
+   REPORT CARD — SCORE SUMMARY (Total / Average / Percentage)
+========================================= */
+
+.report-score-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+
+  margin-top: 20px;
+}
+
+.report-score-summary > div {
+  padding: 16px;
+  text-align: center;
+
+  background: #f9faf9;
+  border: 1px solid #e2e8e4;
+  border-radius: 10px;
+}
+
+.report-score-summary span {
+  display: block;
+  margin-bottom: 6px;
+
+  color: #8a958e;
+  font-family: 'roboto';
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.report-score-summary h3 {
+  margin: 0;
+
+  color: #0b5d3b;
+  font-family: 'roboto';
+  font-size: 22px;
+  font-weight: 900;
+}
+
+@media (max-width: 600px) {
+  .report-score-summary {
+    grid-template-columns: 1fr;
+  }
+}

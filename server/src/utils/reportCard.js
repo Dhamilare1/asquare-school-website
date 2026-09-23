@@ -105,7 +105,11 @@ function streamReportCardPdf(res, data) {
     .fontSize(11)
     .fillColor("#0b5d3b")
     .font("Helvetica-Bold")
-    .text(`Average Score: ${data.average}%`, 50, cursorY);
+    .text(
+      `Total Score: ${data.totalScore}    |    Average Score: ${data.averageScore}    |    Percentage: ${data.percentage}%`,
+      50,
+      cursorY
+    );
   cursorY += 28;
 
   // Safety net: if we're getting close to the bottom of the page (e.g.

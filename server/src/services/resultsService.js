@@ -41,8 +41,9 @@ function getStudentResult(db_, { studentName, studentClass, term, session }) {
     return { subject: row.subject, ca: row.ca, exam: row.exam, total, grade: gradeFor(total) };
   });
 
-  const totalScore = results.reduce((sum, r) => sum + r.total, 0);
-  const average = Math.round((totalScore / results.length) * 100) / 100;
+  const totalScore = results.length * 100; // 100 obtainable marks per subject
+  const averageScore = results.reduce((sum, r) => sum + r.total, 0); // sum of everything actually scored
+  const percentage = Math.round((averageScore / totalScore) * 10000) / 100; // e.g. 82.67
 
   const termSettingsRow = database
     .prepare(
@@ -90,7 +91,9 @@ function getStudentResult(db_, { studentName, studentClass, term, session }) {
     term,
     session,
     results,
-    average,
+    totalScore,
+    averageScore,
+    percentage,
     termRecord,
   };
 }

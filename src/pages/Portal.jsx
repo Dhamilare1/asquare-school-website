@@ -702,6 +702,28 @@ function Portal() {
 
             </motion.div>
 
+            {/* SCORE SUMMARY */}
+
+            <motion.div
+              className="report-score-summary"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              <div>
+                <span>Total Score</span>
+                <h3>{resultData.totalScore}</h3>
+              </div>
+              <div>
+                <span>Average Score</span>
+                <h3>{resultData.averageScore}</h3>
+              </div>
+              <div>
+                <span>Percentage</span>
+                <h3>{resultData.percentage}%</h3>
+              </div>
+            </motion.div>
+
             {/* ATTENDANCE, REMARKS & PROMOTION */}
 
             {resultData.termRecord && (
